@@ -6,7 +6,7 @@ const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
 const { restoreAuthFiles, saveAuthFilesToDB } = require('./lib/Auth/index')
-const { serializeMessage } = require('./lib/serialize')
+const { serializeMessage } = require('./handler')
 require('./config')
 
 db.serialize(() => {
