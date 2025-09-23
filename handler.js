@@ -1,10 +1,13 @@
 /**
-  * Serialize Message
-	* Created By ABZTECH
-	* Follow https://github.com/abrahamdw882
-	* Whatsapp : https://whatsapp.com/channel/0029VaMGgVL3WHTNkhzHik3c
+ * Serialize Message
+ * Created By ABZTECH
+ * Follow https://github.com/abrahamdw882
+ * Whatsapp : https://whatsapp.com/channel/0029VaMGgVL3WHTNkhzHik3c
  */
-module.exports = async serializeMessage(sock, msg) => {
+
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+
+async function serializeMessage(sock, msg) {
     const from = msg.key.remoteJid;
     const isGroup = from.endsWith('@g.us');
     const sender = msg.key.fromMe ? sock.user.id : (isGroup ? msg.key.participant : from);
@@ -27,8 +30,7 @@ module.exports = async serializeMessage(sock, msg) => {
     const mediaType = type.replace('Message', '').toLowerCase();
     const mimetype = msg.message?.[type]?.mimetype || null;
 
-   
-    const groupMetadata = isGroup ? await sock.groupMetadata(from).catch((err) => {}) : '';
+    const groupMetadata = isGroup ? await sock.groupMetadata(from).catch(() => {}) : '';
 
     let quoted;
     const ctxInfo = msg.message?.extendedTextMessage?.contextInfo;
@@ -62,10 +64,12 @@ module.exports = async serializeMessage(sock, msg) => {
         mediaType,
         mimetype,
         quoted,
-        reply: async (text, options={}) => await sock.sendMessage(from,{text,...options},{quoted:msg}),
-        send: async (content, options={}) => await sock.sendMessage(from, typeof content==='string'?{text:content,...options}:content, {quoted:msg}),
+        reply: async (text, options={}) => await sock.sendMessage(from, { text, ...options }, { quoted: msg }),
+        send: async (content, options={}) => await sock.sendMessage(from, typeof content === 'string' ? { text: content, ...options } : content, { quoted: msg }),
         react: async emoji => await sock.sendMessage(from, { react: { text: emoji, key: msg.key } }),
         forward: async (jid, force=false) => await sock.sendMessage(jid, { forward: msg, force }),
-        download: async () => isMedia ? await downloadMediaMessage(msg,'buffer',{},sock) : (quoted?.isMedia ? await quoted.download() : null)
+        download: async () => isMedia ? await downloadMediaMessage(msg, 'buffer', {}, sock) : (quoted?.isMedia ? await quoted.download() : null)
     };
 }
+
+module.exports = serializeMessage;
