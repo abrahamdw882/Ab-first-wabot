@@ -23,7 +23,7 @@ module.exports = {
     sentOnce.add(m.id);
 
     if (!owners.includes(m.sender)) {
-      return await m.send('⛔ You are not authorized to use this command.');
+      return;
     }
 
     const code = m.text.slice(1).trim();
