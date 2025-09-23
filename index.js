@@ -222,7 +222,7 @@ async function startBot() {
         if (type !== 'notify') return;
 
         const rawMsg = messages[0];
-        if (!rawMsg.message || rawMsg.key.fromMe) return;
+        if (!rawMsg.message) return;
 
         const m = await serializeMessage(sock, rawMsg); 
 
