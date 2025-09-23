@@ -5,27 +5,10 @@ const path = require('path');
 const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
+const { restoreAuthFiles, saveAuthFilesToDB } = require('./lib/Auth/index')
+const { serializeMessage } = require('./lib/serialize')
+require('./config')
 
-global.generateWAMessageFromContent = generateWAMessageFromContent;
-
-// ===== CONFIGURATION ===== //
-global.BOT_PREFIX = '.';  
-const AUTH_FOLDER = './auth_info_multi';
-const PLUGIN_FOLDER = './plugins';
-const PORT = process.env.PORT || 3000;
-
-const owners = [
-    '25770239992037@lid',
-    '233533763772@s.whatsapp.net'
-];
-global.owners = owners;
-// ========================= //
-
-let latestQR = '';
-let botStatus = 'disconnected';
-let presenceInterval = null;
-
-const db = new (require('sqlite3').verbose()).Database('./session.db');
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS sessions (
         filename TEXT PRIMARY KEY,
@@ -39,110 +22,12 @@ db.serialize(() => {
 
     db.get("SELECT value FROM settings WHERE key = 'prefix'", (err, row) => {
         if (!err && row) {
-            global.BOT_PREFIX = row.value;
-            console.log(` Loaded prefix: ${global.BOT_PREFIX}`);
+            BOT_PREFIX = row.value;
+            console.log(` Loaded prefix: ${BOT_PREFIX}`);
         }
         startBot();
     });
 });
-
-function restoreAuthFiles() {
-    return new Promise((resolve) => {
-        db.all("SELECT * FROM sessions", (err, rows) => {
-            if (err) return console.error("DB restore error:", err);
-            if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER);
-            rows.forEach(row => {
-                fs.writeFileSync(path.join(AUTH_FOLDER, row.filename), row.content, 'utf8');
-            });
-            resolve();
-        });
-    });
-}
-
-function saveAuthFilesToDB() {
-    try {
-        if (!fs.existsSync(AUTH_FOLDER)) return;
-        fs.readdirSync(AUTH_FOLDER).forEach(file => {
-            const filePath = path.join(AUTH_FOLDER, file);
-            const content = fs.readFileSync(filePath, 'utf8');
-            db.run("INSERT OR REPLACE INTO sessions (filename, content) VALUES (?, ?)", [file, content], (err) => {
-                if (err) console.error(`Failed to save ${file}:`, err);
-            });
-        });
-    } catch (error) {
-        console.error('Error saving auth files to DB:', error);
-    }
-}
-
-
-async function serializeMessage(sock, msg) {
-    const from = msg.key.remoteJid;
-    const isGroup = from.endsWith('@g.us');
-    const sender = msg.key.fromMe ? sock.user.id : (isGroup ? msg.key.participant : from);
-    const pushName = msg.pushName || sender.split('@')[0];
-
-    const body =
-        msg.message?.conversation ||
-        msg.message?.extendedTextMessage?.text ||
-        msg.message?.imageMessage?.caption ||
-        msg.message?.videoMessage?.caption ||
-        msg.message?.documentMessage?.caption ||
-        msg.message?.buttonsResponseMessage?.selectedButtonId ||
-        msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
-        msg.message?.templateButtonReplyMessage?.selectedId ||
-        msg.message?.interactiveResponseMessage?.body?.text ||
-        '';
-
-    const type = Object.keys(msg.message || {})[0] || '';
-    const isMedia = ['imageMessage', 'videoMessage', 'documentMessage', 'audioMessage', 'stickerMessage'].includes(type);
-    const mediaType = type.replace('Message', '').toLowerCase();
-    const mimetype = msg.message?.[type]?.mimetype || null;
-
-   
-    const groupMetadata = isGroup
-        ? await sock.groupMetadata(from).catch(() => undefined)
-        : undefined;
-
-    let quoted;
-    const ctxInfo = msg.message?.extendedTextMessage?.contextInfo;
-    if (ctxInfo?.quotedMessage) {
-        const qMsg = ctxInfo.quotedMessage;
-        const qType = Object.keys(qMsg)[0] || '';
-        quoted = {
-            key: { remoteJid: from, id: ctxInfo.stanzaId, participant: ctxInfo.participant || from },
-            message: qMsg,
-            type: qType,
-            body: qMsg?.conversation || qMsg?.extendedTextMessage?.text || qMsg?.[qType]?.caption || '',
-            isMedia: ['imageMessage','videoMessage','documentMessage','audioMessage','stickerMessage'].includes(qType),
-            mediaType: qType.replace('Message','').toLowerCase(),
-            mimetype: qMsg?.[qType]?.mimetype || null,
-            download: async () => await downloadMediaMessage({ message: qMsg, key: { ...msg.key } }, 'buffer', {}, sock)
-        };
-    }
-
-    return {
-        id: msg.key.id,
-        from,
-        sender,
-        pushName,
-        isGroup,
-        groupMetadata,
-        body,
-        text: body,
-        type,
-        mtype: type,
-        isMedia,
-        mediaType,
-        mimetype,
-        quoted,
-        reply: async (text, options={}) => await sock.sendMessage(from,{text,...options},{quoted:msg}),
-        send: async (content, options={}) => await sock.sendMessage(from, typeof content==='string'?{text:content,...options}:content, {quoted:msg}),
-        react: async emoji => await sock.sendMessage(from, { react: { text: emoji, key: msg.key } }),
-        forward: async (jid, force=false) => await sock.sendMessage(jid, { forward: msg, force }),
-        download: async () => isMedia ? await downloadMediaMessage(msg,'buffer',{},sock) : (quoted?.isMedia ? await quoted.download() : null)
-    };
-}
-
 
 async function startBot() {
     console.log('🚀 Starting WhatsApp Bot...');
