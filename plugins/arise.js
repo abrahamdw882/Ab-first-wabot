@@ -10,7 +10,7 @@ module.exports = {
         if (m.isBot || !m.text) return;
 
         const text = m.text.trim().toLowerCase();
-        const triggers = ['arise', 'test', 'bot', 'rise'];
+        const triggers = ['arise', 'rise'];
         const isTriggered = triggers.some(word => text.startsWith(word));
 
         if (isTriggered) {
