@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
 const sqlite3 = require('sqlite3').verbose();
 
-const { serializeMessage } = require('./handler.js');
+const serializeMessage = require('./handler.js');
 
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 
