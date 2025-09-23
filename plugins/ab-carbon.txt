@@ -2,7 +2,7 @@ const axios = require('axios');
 
 module.exports = {
     name: "carbon",
-    aliases: ["carbonify"],
+    aliases: ["carboni"],
     description: "Generate a stylized Carbon image from text",
     
     async execute(sock, m, args) {
