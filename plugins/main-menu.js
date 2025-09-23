@@ -13,7 +13,7 @@ module.exports = {
   ┌─ム *Available Commands*
   ┃ ᪣  ${prefix}alive
   ┃ ᪣  ${prefix}arise
-  ┃ ᪣  ${prefix}chatbot
+  ┃ ᪣  ${prefix}poll
   ┃ ᪣  ${prefix}couplepp
   ┃ ᪣  ${prefix}owner
   ┃ ᪣   >
