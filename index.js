@@ -5,9 +5,29 @@ const path = require('path');
 const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
-const { restoreAuthFiles, saveAuthFilesToDB } = require('./lib/auth')
-const { serializeMessage } = require('./handler')
-require('./config')
+const sqlite3 = require('sqlite3').verbose();
+
+const { serializeMessage } = require('./handler.js');
+
+global.generateWAMessageFromContent = generateWAMessageFromContent;
+
+// ===== CONFIGURATION ===== //
+global.BOT_PREFIX = '.';
+const AUTH_FOLDER = './auth_info_multi';
+const PLUGIN_FOLDER = './plugins';
+const PORT = process.env.PORT || 3000;
+
+const owners = [
+    '25770239992037@lid',
+    '233533763772@s.whatsapp.net'
+];
+global.owners = owners;
+// ========================= //
+
+let latestQR = '';
+let botStatus = 'disconnected';
+let presenceInterval = null;
+const db = new sqlite3.Database('./session.db');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS sessions (
@@ -22,12 +42,40 @@ db.serialize(() => {
 
     db.get("SELECT value FROM settings WHERE key = 'prefix'", (err, row) => {
         if (!err && row) {
-            BOT_PREFIX = row.value;
-            console.log(` Loaded prefix: ${BOT_PREFIX}`);
+            global.BOT_PREFIX = row.value;
+            console.log(` Loaded prefix: ${global.BOT_PREFIX}`);
         }
         startBot();
     });
 });
+
+function restoreAuthFiles() {
+    return new Promise((resolve) => {
+        db.all("SELECT * FROM sessions", (err, rows) => {
+            if (err) return console.error("DB restore error:", err);
+            if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER);
+            rows.forEach(row => {
+                fs.writeFileSync(path.join(AUTH_FOLDER, row.filename), row.content, 'utf8');
+            });
+            resolve();
+        });
+    });
+}
+
+function saveAuthFilesToDB() {
+    try {
+        if (!fs.existsSync(AUTH_FOLDER)) return;
+        fs.readdirSync(AUTH_FOLDER).forEach(file => {
+            const filePath = path.join(AUTH_FOLDER, file);
+            const content = fs.readFileSync(filePath, 'utf8');
+            db.run("INSERT OR REPLACE INTO sessions (filename, content) VALUES (?, ?)", [file, content], (err) => {
+                if (err) console.error(`Failed to save ${file}:`, err);
+            });
+        });
+    } catch (error) {
+        console.error('Error saving auth files to DB:', error);
+    }
+}
 
 async function startBot() {
     console.log('🚀 Starting WhatsApp Bot...');
@@ -82,7 +130,6 @@ async function startBot() {
         await saveCreds();
         saveAuthFilesToDB();
     });
-
     const plugins = new Map();
     const pluginPath = path.join(__dirname, PLUGIN_FOLDER);
     try {
@@ -105,11 +152,10 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
-
         const rawMsg = messages[0];
         if (!rawMsg.message) return;
 
-        const m = await serializeMessage(sock, rawMsg); 
+        const m = await serializeMessage(sock, rawMsg);
 
         if (m.body.startsWith(global.BOT_PREFIX)) {
             const args = m.body.slice(global.BOT_PREFIX.length).trim().split(/\s+/);
@@ -120,7 +166,6 @@ async function startBot() {
                 catch (err) { console.error(`❌ Plugin error (${commandName}):`, err); await m.reply('Error running command.'); }
             }
         }
-
         for (const plugin of plugins.values()) {
             if (typeof plugin.onMessage === 'function') {
                 try { await plugin.onMessage(sock, m); }
