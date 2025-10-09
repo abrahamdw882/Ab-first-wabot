@@ -36,7 +36,7 @@ module.exports = {
                 {
                     audio: { url: audioUrl },
                     mimetype: 'audio/mpeg',
-                    ptt: true,
+                    ptt: false,
                     fileName: 'TTS',
                     contextInfo: {
                         mentionedJid: [m.sender],
