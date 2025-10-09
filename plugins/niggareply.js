@@ -1,19 +1,52 @@
 module.exports = {
-    name: 'autoniggareply',
-    description: 'Replies',
+    name: 'blindfella-reply',
+    description: 'Auto reply when a specific person says "blind fella"',
 
     async execute() {},
 
     async onMessage(sock, m) {
         try {
-            if (!m || !m.from) return;
-
+            const text = m.body || m.text || m.message?.extendedTextMessage?.text || '';
             const target = '195692299612239@lid';
-            const text = (m.body || m.quoted?.body || '').toLowerCase();
+            if (m.sender !== target || !/blind\s*fella/i.test(text)) return;
 
-            if (m.sender === target && /blind\s*fella/i.test(text)) {
-                await sock.sendMessage(m.from, { text: "My master isn't blind nigga." });
-            }
+            const name = m.pushName || m.sender.split('@')[0];
+            const replyText = "My master isn't blind nigga.";
+            const thumbnail = 'https://i.ibb.co/65fwTVG/carbon-3.png';
+            const quoted = {
+                key: {
+                    fromMe: false,
+                    participant: m.sender,
+                    ...(m.isGroup ? { remoteJid: m.from } : {}),
+                },
+                message: {
+                    contactMessage: {
+                        displayName: name,
+                        vcard: `BEGIN:VCARD\nVERSION:3.0\nN:;a,;;;\nFN:${name}\nitem1.TEL;waid=${m.sender.split('@')[0]}:${m.sender.split('@')[0]}\nitem1.X-ABLabel:Ponsel\nEND:VCARD`,
+                    },
+                },
+            };
+
+            await m.send(
+                {
+                    text: replyText,
+                    contextInfo: {
+                        mentionedJid: [m.sender],
+                        externalAdReply: {
+                            title: "bruh",
+                            body: "master look at this nigga",
+                            thumbnailUrl: thumbnail,
+                            sourceUrl: 'https://www.whatsapp.com/channel/0029VaMGgVL3WHTNkhzHik3c',
+                            mediaType: 1,
+                            renderLargerThumbnail: true,
+                        },
+                    },
+                },
+                { quoted }
+            );
+
+            await m.react("🤔");
+
         } catch (err) {
             console.error('error:', err);
         }
