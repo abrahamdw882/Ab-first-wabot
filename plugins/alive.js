@@ -27,7 +27,7 @@ module.exports = {
                 {
                     audio: { url: audioUrl },
                     mimetype: 'audio/mpeg',
-                    ptt: true,
+                    ptt: false,
                     waveform: [100, 0, 100, 0, 100, 0, 100],
                     fileName: 'Alive',
                     contextInfo: {
