@@ -10,7 +10,7 @@ module.exports = {
         await m.reply('Pinging...');
         const latency = Date.now() - start;
         const info = `> Latency: ${latency} ms`;
-        const imgUrl = 'https://i.ibb.co/rfsYsGn1/Ayanokouji-1.jpg';
+        const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
         const author = 'ABZTech';
         const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
         const sourceUrl = 'https://abztech.xyz/';
