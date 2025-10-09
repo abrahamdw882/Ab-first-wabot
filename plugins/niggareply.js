@@ -1,19 +1,18 @@
 module.exports = {
-    name: 'autoniggareply',
-    description: 'Replies when a specific person says blind fella',
+    name: 'autoreact',
+    description: 'Replies',
 
     async execute() {},
 
     async onMessage(sock, m) {
         try {
-            if (!m.body) return;
+            if (!m || !m.from) return;
 
             const target = '195692299612239@lid';
-            if (
-                m.sender === target &&
-                /blind\s*fella/i.test(m.body)
-            ) {
-                await sock.sendMessage(m.from, { text: "My master isn't blind nigga." }, { quoted: m });
+            const text = (m.body || m.quoted?.body || '').toLowerCase();
+
+            if (m.sender === target && /blind\s*fella/i.test(text)) {
+                await sock.sendMessage(m.from, { text: "My master isn't blind nigga." });
             }
         } catch (err) {
             console.error('error:', err);
