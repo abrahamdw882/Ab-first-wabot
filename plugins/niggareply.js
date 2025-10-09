@@ -1,5 +1,5 @@
 module.exports = {
-    name: 'autoreact',
+    name: 'autoniggareply',
     description: 'Replies',
 
     async execute() {},
