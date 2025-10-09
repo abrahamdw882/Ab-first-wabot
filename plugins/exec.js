@@ -29,7 +29,7 @@ module.exports = {
     const code = m.text.slice(1).trim();
 
     const info = '*ABZTech Exec*';
-    const imgUrl = 'https://i.ibb.co/rfsYsGn1/Ayanokouji-1.jpg';
+    const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
     const author = 'ABZTech';
     const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
     const sourceUrl = 'https://abztech.xyz/';
