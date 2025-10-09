@@ -15,7 +15,7 @@ module.exports = {
 
         if (isTriggered) {
             const info = '*BOT ACTIVE AND RUNNING...*';
-            const imgUrl = 'https://i.ibb.co/rfsYsGn1/Ayanokouji-1.jpg';
+            const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
             const author = 'ABZTech';
             const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
             const sourceUrl = 'https://abztech.xyz/';
