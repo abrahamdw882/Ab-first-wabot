@@ -12,7 +12,7 @@ module.exports = {
 
   ┌─ム *Available Commands*
   ┃ ᪣  ${prefix}alive
-  ┃ ᪣  ${prefix}arise
+  ┃ ᪣  arise
   ┃ ᪣  ${prefix}poll
   ┃ ᪣  ${prefix}couplepp
   ┃ ᪣  ${prefix}owner
@@ -26,7 +26,7 @@ module.exports = {
 > 「 𝙏𝙞𝙢𝙚 - 𝙏𝙞𝙢𝙚𝙡𝙚𝙨𝙨 」
         `.trim();
 
-        const imgUrl = 'https://i.ibb.co/rfsYsGn1/Ayanokouji-1.jpg';
+        const imgUrl = 'https://i.ibb.co/65fwTVG/carbon-3.png';
         const author = 'ABZTech';
         const botname = 'ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ';
         const sourceUrl = 'https://abztech.xyz/';
