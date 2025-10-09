@@ -1,18 +1,19 @@
 module.exports = {
-    name: 'blindfella-reply',
-    description: 'Auto reply when a specific person says "blind fella"',
+    name: 'niggareply',
+    description: 'Auto reply when a specific person says or replies with "blind fella"',
 
     async execute() {},
 
     async onMessage(sock, m) {
         try {
-            const text = m.body || m.text || m.message?.extendedTextMessage?.text || '';
+            const text = (m.body || m.quoted?.body || m.text || m.message?.extendedTextMessage?.text || '').toLowerCase();
             const target = '195692299612239@lid';
-            if (m.sender !== target || !/blind\s*fella/i.test(text)) return;
+            if (m.sender !== target || !text.includes('blind fella')) return;
 
             const name = m.pushName || m.sender.split('@')[0];
             const replyText = "My master isn't blind nigga.";
             const thumbnail = 'https://i.ibb.co/65fwTVG/carbon-3.png';
+
             const quoted = {
                 key: {
                     fromMe: false,
@@ -48,7 +49,7 @@ module.exports = {
             await m.react("🤔");
 
         } catch (err) {
-            console.error('error:', err);
+            console.error('❌ blindfella-reply error:', err);
         }
     }
 };
