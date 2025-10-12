@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code - ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="logo">
+                    <i class="fas fa-robot logo-icon"></i>
+                    ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ
+                </a>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/qr" class="nav-link active">QR Code</a>
+                    <a href="/pair" class="nav-link">Pairing</a>
+                    <a href="/api/status" class="nav-link">API Status</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="hero">
+                <h1 class="hero-title">QR Code Login</h1>
+                <p class="hero-subtitle">Scan this QR code with your WhatsApp to link your device</p>
+            </div>
+            
+            <div class="card fade-in">
+                <div id="status-badge" class="status-badge status-disconnected fade-in">
+                    <i class="fas fa-times-circle"></i>
+                    <span id="status-text">Disconnected</span>
+                </div>
+                
+                <div id="qr-container">
+                    <div class="qr-container">
+                        <i class="fas fa-qrcode qr-placeholder"></i>
+                        <h3>QR Code Not Available</h3>
+                        <p>Please wait for the bot to generate a QR code or use the pairing method instead.</p>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <a href="/pair" class="btn btn-outline">
+                        <i class="fas fa-mobile-alt"></i>
+                        Use Pairing Code Instead
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="https://abztech.xyz" target="_blank" class="footer-link">
+                        <i class="fas fa-globe"></i> Website
+                    </a>
+                    <a href="/api/status" class="footer-link" target="_blank">
+                        <i class="fas fa-heart-pulse"></i> API Status
+                    </a>
+                </div>
+                <p class="copyright">
+                    &copy; 2024 ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/script.js"></script>
+</body>
+</html>
