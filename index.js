@@ -26,6 +26,7 @@ global.owners = owners;
 
 let latestQR = '';
 let botStatus = 'disconnected';
+let pairingCodes = new Map(); 
 let presenceInterval = null;
 const db = new sqlite3.Database('./session.db');
 
@@ -77,12 +78,14 @@ function saveAuthFilesToDB() {
     }
 }
 
+let sock; 
+
 async function startBot() {
     console.log('🚀 Starting WhatsApp Bot...');
     await restoreAuthFiles();
 
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
-    const sock = makeWASocket({
+    sock = makeWASocket({
         logger: pino({ level: 'info' }),
         auth: state,
         printQRInTerminal: true,
@@ -174,17 +177,137 @@ async function startBot() {
         }
     });
 }
-
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    
     if (url.pathname === '/qr') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(latestQR ? `<html><body style="background:#111;color:white;text-align:center;"><h1>Scan QR</h1><img src="${latestQR}" /></body></html>` : 'QR not generated yet.');
+    
+    } else if (url.pathname === '/pair') {
+        if (req.method === 'GET') {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+                <html>
+                <head>
+                    <title>Pair with WhatsApp</title>
+                    <style>
+                        body { background: #111; color: white; text-align: center; font-family: Arial; padding: 50px; }
+                        .container { max-width: 400px; margin: 0 auto; }
+                        input, button { padding: 10px; margin: 10px; width: 80%; border-radius: 5px; border: none; }
+                        input { background: #222; color: white; }
+                        button { background: #25D366; color: white; cursor: pointer; }
+                        .code { font-size: 24px; font-weight: bold; color: #25D366; letter-spacing: 3px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>📱 Pair WhatsApp</h1>
+                        <p>Enter your phone number with country code:</p>
+                        <form method="POST">
+                            <input type="text" name="phone" placeholder="e.g. 1234567890" required>
+                            <button type="submit">Get Pairing Code</button>
+                        </form>
+                        <p><a href="/qr" style="color: #25D366;">Or scan QR code instead</a></p>
+                    </div>
+                </body>
+                </html>
+            `);
+        } else if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const params = new URLSearchParams(body);
+                    const phoneNumber = params.get('phone').trim();
+                    
+                    if (!phoneNumber) {
+                        res.writeHead(400, { 'Content-Type': 'text/html' });
+                        return res.end('Phone number is required');
+                    }
+
+                    if (!sock || botStatus !== 'connected') {
+                        res.writeHead(500, { 'Content-Type': 'text/html' });
+                        return res.end('Bot is not connected. Please try again later.');
+                    }
+                    const pairingCode = await sock.requestPairingCode(phoneNumber);
+                    pairingCodes.set(phoneNumber, pairingCode);
+                    res.writeHead(200, { 'Content-Type': 'text/html' });
+                    res.end(`
+                        <html>
+                        <head>
+                            <title>Pairing Code</title>
+                            <style>
+                                body { background: #111; color: white; text-align: center; font-family: Arial; padding: 50px; }
+                                .container { max-width: 500px; margin: 0 auto; }
+                                .code { font-size: 32px; font-weight: bold; color: #25D366; letter-spacing: 4px; margin: 30px 0; padding: 20px; background: #222; border-radius: 10px; }
+                                .steps { text-align: left; margin: 20px 0; }
+                                .step { margin: 10px 0; }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <h1>✅ Pairing Code Generated</h1>
+                                <p>For phone number: <strong>${phoneNumber}</strong></p>
+                                
+                                <div class="code">${pairingCode.match(/.{1,4}/g)?.join('-') || pairingCode}</div>
+                                
+                                <div class="steps">
+                                    <h3>How to use:</h3>
+                                    <div class="step">1. Open WhatsApp on your phone</div>
+                                    <div class="step">2. Go to Settings → Linked Devices</div>
+                                    <div class="step">3. Tap "Link a Device"</div>
+                                    <div class="step">4. Enter this code: <strong>${pairingCode}</strong></div>
+                                </div>
+                                
+                                <p><a href="/pair" style="color: #25D366;">← Generate another code</a></p>
+                                <p><a href="/qr" style="color: #25D366;">Or scan QR code instead</a></p>
+                            </div>
+                        </body>
+                        </html>
+                    `);
+
+                    console.log(`📱 Pairing code generated for ${phoneNumber}: ${pairingCode}`);
+                    
+                } catch (error) {
+                    console.error('Pairing code error:', error);
+                    res.writeHead(500, { 'Content-Type': 'text/html' });
+                    res.end(`
+                        <html>
+                        <body style="background:#111;color:white;text-align:center;padding:50px;">
+                            <h1>Error</h1>
+                            <p>Failed to generate pairing code: ${error.message}</p>
+                            <p><a href="/pair" style="color:#25D366;">Try again</a></p>
+                        </body>
+                        </html>
+                    `);
+                }
+            });
+        }
+    
     } else if (url.pathname === '/watch') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'online', botStatus, prefix: global.BOT_PREFIX, time: new Date().toISOString() }));
+        res.end(JSON.stringify({ 
+            status: 'online', 
+            botStatus, 
+            prefix: global.BOT_PREFIX, 
+            time: new Date().toISOString(),
+            pairingCodes: Array.from(pairingCodes.entries())
+        }));
+    
     } else {
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('Bot Server is Running. Visit /qr to scan.');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`
+            <html>
+            <body style="background:#111;color:white;text-align:center;padding:50px;">
+                <h1>🤖 WhatsApp Bot</h1>
+                <p>Status: <strong>${botStatus}</strong></p>
+                <div style="margin:20px;">
+                    <a href="/qr" style="color:#25D366;margin:10px;display:inline-block;">Scan QR Code</a>
+                    <a href="/pair" style="color:#25D366;margin:10px;display:inline-block;">Get Pairing Code</a>
+                </div>
+            </body>
+            </html>
+        `);
     }
 }).listen(PORT, () => console.log(`HTTP Server running at http://localhost:${PORT}`));
