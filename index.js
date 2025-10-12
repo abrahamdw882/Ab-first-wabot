@@ -91,24 +91,21 @@ async function startBot() {
         sock = makeWASocket({
             logger: pino({ level: 'info' }),
             auth: state,
-            printQRInTerminal: true,
+            printQRInTerminal: false,
             keepAliveIntervalMs: 10000,
             markOnlineOnConnect: true,
             syncFullHistory: true
         });
 
-        setInterval(() => {
-            if (botStatus === 'connected') {
-                console.log(`[${new Date().toLocaleString()}] Bot is still running...`);
-            }
-        }, 5*60*1000);
-
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-
             if (qr) {
+                console.log('🔄 Generating QR code for web...');
                 QRCode.toDataURL(qr, (err, url) => { 
-                    if (!err) latestQR = url; 
+                    if (!err) {
+                        latestQR = url;
+                        console.log('✅ QR code generated for web');
+                    }
                 });
             }
 
@@ -209,35 +206,9 @@ async function startBot() {
     }
 }
 
-async function generatePairingCode(phoneNumber) {
-    console.log(` Creating pairing socket for: ${phoneNumber}`);
-    
-    try {
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
-        
-        const pairingSocket = makeWASocket({
-            logger: pino({ level: 'silent' }),
-            auth: state,
-            printQRInTerminal: false,
-            connectTimeoutMs: 30000,
-        });
-
-        const code = await pairingSocket.requestPairingCode(phoneNumber);
-        
-        pairingSocket.ws.close();
-        
-        console.log(`✅ Pairing code generated: ${code}`);
-        return code;
-        
-    } catch (error) {
-        console.error('❌ Pairing code generation failed:', error);
-        throw error;
-    }
-}
-
 http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    
+
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -284,17 +255,23 @@ http.createServer(async (req, res) => {
                         button { background: #25D366; color: white; cursor: pointer; }
                         .code { font-size: 24px; font-weight: bold; color: #25D366; letter-spacing: 3px; margin: 20px 0; }
                         .status { margin: 10px 0; padding: 10px; border-radius: 5px; background: #333; }
+                        .waiting { background: #ff9800; color: black; }
+                        .ready { background: #4CAF50; }
+                        .error { background: #f44336; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <h1>📱 Pair WhatsApp</h1>
-                        <div class="status">Bot Status: <strong>${botStatus}</strong></div>
+                        <div class="status ${botStatus === 'connecting' ? 'waiting' : botStatus === 'connected' ? 'ready' : 'error'}">
+                            Status: <strong>${botStatus}</strong>
+                        </div>
                         <p>Enter your phone number with country code (without +):</p>
                         <form method="POST">
                             <input type="text" name="phone" placeholder="e.g. 1234567890" required pattern="[0-9]+" title="Numbers only">
                             <button type="submit">Get Pairing Code</button>
                         </form>
+                        <p><em>Note: Bot must be in "connecting" state for pairing to work</em></p>
                         <p><a href="/qr" style="color: #25D366;">Or scan QR code instead</a></p>
                     </div>
                 </body>
@@ -312,6 +289,8 @@ http.createServer(async (req, res) => {
                         res.writeHead(400, { 'Content-Type': 'text/html' });
                         return res.end('Phone number is required');
                     }
+
+         
                     phoneNumber = phoneNumber.replace(/\D/g, '');
 
                     if (phoneNumber.length < 8) {
@@ -319,10 +298,24 @@ http.createServer(async (req, res) => {
                         return res.end('Invalid phone number');
                     }
 
-                    console.log(`📱 Generating pairing code for: ${phoneNumber}`);
+                    console.log(`📱 Requesting pairing code for: ${phoneNumber}, Bot status: ${botStatus}`);
+                    if (botStatus !== 'connecting' || !sock) {
+                        res.writeHead(400, { 'Content-Type': 'text/html' });
+                        return res.end(`
+                            <html>
+                            <body style="background:#111;color:white;text-align:center;padding:50px;">
+                                <h1>❌ Bot Not Ready for Pairing</h1>
+                                <p>Current status: <strong>${botStatus}</strong></p>
+                                <p>Pairing codes only work when the bot is in "connecting" state.</p>
+                                <p>Please wait for the bot to start connecting, then try again.</p>
+                                <p><a href="/pair" style="color:#25D366;">Try again</a> | <a href="/qr" style="color:#25D366;">Use QR code</a></p>
+                            </body>
+                            </html>
+                        `);
+                    }
 
-                    const pairingCode = await generatePairingCode(phoneNumber);
-
+                    const pairingCode = await sock.requestPairingCode(phoneNumber);
+                    
                     pairingCodes.set(phoneNumber, {
                         code: pairingCode,
                         timestamp: Date.now()
@@ -335,7 +328,6 @@ http.createServer(async (req, res) => {
                         }
                     }
 
-    
                     res.writeHead(200, { 'Content-Type': 'text/html' });
                     res.end(`
                         <html>
@@ -377,14 +369,22 @@ http.createServer(async (req, res) => {
                     
                 } catch (error) {
                     console.error('❌ Pairing code error:', error);
+                    
+                    let errorMessage = error.message;
+                    if (errorMessage.includes('check phone number')) {
+                        errorMessage = 'Please check your phone number and try again. Make sure it includes country code without +.';
+                    } else if (errorMessage.includes('not registered')) {
+                        errorMessage = 'This phone number is not registered on WhatsApp.';
+                    }
+                    
                     res.writeHead(500, { 'Content-Type': 'text/html' });
                     res.end(`
                         <html>
                         <body style="background:#111;color:white;text-align:center;padding:50px;">
                             <h1>❌ Error Generating Pairing Code</h1>
-                            <p>${error.message}</p>
-                            <p>Please check the phone number and try again.</p>
-                            <p><a href="/pair" style="color:#25D366;">Try again</a></p>
+                            <p>${errorMessage}</p>
+                            <p>Current bot status: <strong>${botStatus}</strong></p>
+                            <p><a href="/pair" style="color:#25D366;">Try again</a> | <a href="/qr" style="color:#25D366;">Use QR code instead</a></p>
                         </body>
                         </html>
                     `);
