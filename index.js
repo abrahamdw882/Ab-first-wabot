@@ -171,7 +171,7 @@ async function startBot() {
                 });
                 console.log(`📦 Loaded ${plugins.size} plugins`);
             }
-        } catch (error) { console.error(' Error loading plugins:', error); }
+        } catch (error) { console.error('Error loading plugins:', error); }
 
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
@@ -186,13 +186,13 @@ async function startBot() {
                 const plugin = plugins.get(commandName);
                 if (plugin) {
                     try { await plugin.execute(sock, m, args); }
-                    catch (err) { console.error(` Plugin error (${commandName}):`, err); await m.reply('Error running command.'); }
+                    catch (err) { console.error(`Plugin error (${commandName}):`, err); await m.reply('Error running command.'); }
                 }
             }
             for (const plugin of plugins.values()) {
                 if (typeof plugin.onMessage === 'function') {
                     try { await plugin.onMessage(sock, m); }
-                    catch (err) { console.error(` onMessage error (${plugin.name}):`, err); }
+                    catch (err) { console.error(`onMessage error (${plugin.name}):`, err); }
                 }
             }
         });
@@ -203,30 +203,44 @@ async function startBot() {
         setTimeout(() => startBot(), 10000);
     }
 }
+function serveStaticFile(urlPath, res) {
+    const staticPath = path.join(__dirname, 'public');
+    const filePath = path.join(staticPath, urlPath);
+    if (!filePath.startsWith(staticPath)) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+    }
 
-function serveHTML(filePath, res, data = {}) {
-    fs.readFile(path.join(__dirname, 'public', filePath), 'utf8', (err, content) => {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypes = {
+        '.css': 'text/css',
+        '.js': 'application/javascript',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon',
+        '.json': 'application/json',
+        '.html': 'text/html'
+    };
+
+    fs.readFile(filePath, (err, data) => {
         if (err) {
+            console.error('Error serving static file:', err);
             res.writeHead(404);
-            res.end('Page not found');
+            res.end('File not found');
             return;
         }
-
-
-        let html = content
-            .replace(/\$\{botStatus\}/g, data.botStatus || botStatus)
-            .replace(/\$\{latestQR\}/g, data.latestQR || latestQR || '')
-            .replace(/\$\{phoneNumber\}/g, data.phoneNumber || '')
-            .replace(/\$\{pairingCode\}/g, data.pairingCode || '')
-            .replace(/\$\{errorMessage\}/g, data.errorMessage || '')
-            .replace(/\$\{BOT_PREFIX\}/g, global.BOT_PREFIX);
-
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(html);
+        
+        res.writeHead(200, { 
+            'Content-Type': contentTypes[ext] || 'text/plain',
+            'Cache-Control': 'public, max-age=3600'
+        });
+        res.end(data);
     });
 }
-
-
 http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -237,26 +251,16 @@ http.createServer(async (req, res) => {
         res.writeHead(200);
         return res.end();
     }
-    if (url.pathname.startsWith('/static/')) {
-        const filePath = path.join(__dirname, 'public', url.pathname.slice(8));
-        const ext = path.extname(filePath);
-        const contentTypes = {
-            '.css': 'text/css',
-            '.js': 'application/javascript',
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.ico': 'image/x-icon'
-        };
-
-        fs.readFile(filePath, (err, data) => {
-            if (err) {
-                res.writeHead(404);
-                res.end('Not found');
-                return;
-            }
-            res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'text/plain' });
-            res.end(data);
-        });
+    if (url.pathname === '/style.css' || url.pathname === '/script.js') {
+        serveStaticFile(url.pathname, res);
+        return;
+    }
+    if (url.pathname === '/' || url.pathname === '/qr' || url.pathname === '/pair') {
+        let page = 'index.html';
+        if (url.pathname === '/qr') page = 'qr.html';
+        if (url.pathname === '/pair') page = 'pair.html';
+        
+        serveStaticFile(page, res);
         return;
     }
     if (url.pathname === '/api/status') {
@@ -267,97 +271,87 @@ http.createServer(async (req, res) => {
             prefix: global.BOT_PREFIX, 
             time: new Date().toISOString(),
             hasQR: !!latestQR,
+            latestQR: latestQR,
             pairingCodesCount: pairingCodes.size,
             version: '1.0.0',
             author: 'ABZTech'
         }));
         return;
     }
-    if (url.pathname === '/qr') {
-        serveHTML('index.html', res, { 
-            page: 'qr',
-            latestQR: latestQR 
-        });
-    
-    } else if (url.pathname === '/pair') {
-        if (req.method === 'GET') {
-            serveHTML('index.html', res, { page: 'pair' });
-        } else if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk);
-            req.on('end', async () => {
-                try {
-                    const params = new URLSearchParams(body);
-                    let phoneNumber = params.get('phone').trim();
-                    
-                    if (!phoneNumber) {
-                        serveHTML('index.html', res, { 
-                            page: 'error',
-                            errorMessage: 'Phone number is required' 
-                        });
-                        return;
-                    }
-
-                    phoneNumber = phoneNumber.replace(/\D/g, '');
-
-                    if (phoneNumber.length < 8) {
-                        serveHTML('index.html', res, { 
-                            page: 'error',
-                            errorMessage: 'Invalid phone number' 
-                        });
-                        return;
-                    }
-
-                    console.log(`📱 Requesting pairing code for: ${phoneNumber}, Bot status: ${botStatus}`);
-                    
-                    if (botStatus !== 'connecting' || !sock) {
-                        serveHTML('index.html', res, { 
-                            page: 'error',
-                            errorMessage: `Bot not ready for pairing. Current status: ${botStatus}. Please wait for "connecting" state.` 
-                        });
-                        return;
-                    }
-
-                    const pairingCode = await sock.requestPairingCode(phoneNumber);
-                    
-                    pairingCodes.set(phoneNumber, {
-                        code: pairingCode,
-                        timestamp: Date.now()
-                    });
-                    const now = Date.now();
-                    for (let [number, data] of pairingCodes.entries()) {
-                        if (now - data.timestamp > 10 * 60 * 1000) {
-                            pairingCodes.delete(number);
-                        }
-                    }
-
-                    serveHTML('index.html', res, { 
-                        page: 'pair-success',
-                        phoneNumber: phoneNumber,
-                        pairingCode: pairingCode 
-                    });
-
-                    console.log(`✅ Pairing code generated for ${phoneNumber}: ${pairingCode}`);
-                    
-                } catch (error) {
-                    console.error('❌ Pairing code error:', error);
-                    
-                    let errorMessage = error.message;
-                    if (errorMessage.includes('check phone number')) {
-                        errorMessage = 'Please check your phone number and try again. Make sure it includes country code without +.';
-                    } else if (errorMessage.includes('not registered')) {
-                        errorMessage = 'This phone number is not registered on WhatsApp.';
-                    }
-                    
-                    serveHTML('index.html', res, { 
-                        page: 'error',
-                        errorMessage: errorMessage 
-                    });
+    if (url.pathname === '/api/pair' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const params = new URLSearchParams(body);
+                let phoneNumber = params.get('phone').trim();
+                
+                if (!phoneNumber) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Phone number is required' }));
+                    return;
                 }
-            });
-        }
-    
-    } else {
-        serveHTML('index.html', res, { page: 'home' });
+
+                phoneNumber = phoneNumber.replace(/\D/g, '');
+
+                if (phoneNumber.length < 8) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid phone number' }));
+                    return;
+                }
+
+                console.log(`📱 Requesting pairing code for: ${phoneNumber}, Bot status: ${botStatus}`);
+                
+                if (botStatus !== 'connecting' || !sock) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: `Bot not ready for pairing. Current status: ${botStatus}. Please wait for "connecting" state.` 
+                    }));
+                    return;
+                }
+
+                const pairingCode = await sock.requestPairingCode(phoneNumber);
+                
+                pairingCodes.set(phoneNumber, {
+                    code: pairingCode,
+                    timestamp: Date.now()
+                });
+                const now = Date.now();
+                for (let [number, data] of pairingCodes.entries()) {
+                    if (now - data.timestamp > 10 * 60 * 1000) {
+                        pairingCodes.delete(number);
+                    }
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    success: true,
+                    phoneNumber: phoneNumber,
+                    pairingCode: pairingCode
+                }));
+
+                console.log(`✅ Pairing code generated for ${phoneNumber}: ${pairingCode}`);
+                
+            } catch (error) {
+                console.error(' Pairing code error:', error);
+                
+                let errorMessage = error.message;
+                if (errorMessage.includes('check phone number')) {
+                    errorMessage = 'Please check your phone number and try again. Make sure it includes country code without +.';
+                } else if (errorMessage.includes('not registered')) {
+                    errorMessage = 'This phone number is not registered on WhatsApp.';
+                }
+                
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: errorMessage }));
+            }
+        });
+        return;
     }
-}).listen(PORT, () => console.log(`running at http://localhost:${PORT}`));
+
+    res.writeHead(404);
+    res.end('Not found');
+}).listen(PORT, () => {
+    console.log(`🚀 ABZTech WhatsApp Bot running at http://localhost:${PORT}`);
+    console.log(`📁 Serving static files from: ${path.join(__dirname, 'public')}`);
+});
