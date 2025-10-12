@@ -238,7 +238,7 @@ http.createServer(async (req, res) => {
         return res.end();
     }
     if (url.pathname.startsWith('/static/')) {
-        const filePath = url.pathname.slice(1); 
+        const filePath = path.join(__dirname, 'public', url.pathname.slice(8));
         const ext = path.extname(filePath);
         const contentTypes = {
             '.css': 'text/css',
@@ -248,7 +248,7 @@ http.createServer(async (req, res) => {
             '.ico': 'image/x-icon'
         };
 
-        fs.readFile(path.join(__dirname, filePath), (err, data) => {
+        fs.readFile(filePath, (err, data) => {
             if (err) {
                 res.writeHead(404);
                 res.end('Not found');
