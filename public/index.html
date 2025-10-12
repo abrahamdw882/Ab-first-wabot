@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ - WhatsApp Bot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="logo">
+                    <i class="fas fa-robot logo-icon"></i>
+                    ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ
+                </a>
+                <div class="nav-links">
+                    <a href="/" class="nav-link ${page === 'home' ? 'active' : ''}">Home</a>
+                    <a href="/qr" class="nav-link ${page === 'qr' ? 'active' : ''}">QR Code</a>
+                    <a href="/pair" class="nav-link ${page === 'pair' ? 'active' : ''}">Pairing</a>
+                    <a href="/api/status" class="nav-link">API Status</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        ${(() => {
+            if (page === 'home') {
+                return `
+                <div class="container">
+                    <div class="hero">
+                        <h1 class="hero-title">ABZTech WhatsApp Bot</h1>
+                        <p class="hero-subtitle">Advanced multi-device WhatsApp bot with modern features and seamless integration</p>
+                        ${getStatusBadge(botStatus)}
+                    </div>
+                    
+                    <div class="features-grid">
+                        <div class="card fade-in">
+                            <i class="fas fa-qrcode feature-icon"></i>
+                            <h3 class="card-title">QR Code Login</h3>
+                            <p>Quick and easy login using QR code scanning. Perfect for instant setup.</p>
+                            <a href="/qr" class="btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                Scan QR Code
+                            </a>
+                        </div>
+                        
+                        <div class="card fade-in">
+                            <i class="fas fa-mobile-alt feature-icon"></i>
+                            <h3 class="card-title">Pairing Code</h3>
+                            <p>Link your device using a numeric code. No camera required for setup.</p>
+                            <a href="/pair" class="btn">
+                                <i class="fas fa-external-link-alt"></i>
+                                Get Pairing Code
+                            </a>
+                        </div>
+                        
+                        <div class="card fade-in">
+                            <i class="fas fa-heart-pulse feature-icon"></i>
+                            <h3 class="card-title">System Status</h3>
+                            <p>Check the current status and health of your WhatsApp bot instance.</p>
+                            <a href="/api/status" class="btn" target="_blank">
+                                <i class="fas fa-external-link-alt"></i>
+                                View Status
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card fade-in cta-card">
+                        <h3 class="card-title">Ready to Get Started?</h3>
+                        <p>Choose your preferred login method to begin using the ABZTech WhatsApp Bot</p>
+                        <div class="cta-buttons">
+                            <a href="/qr" class="btn">
+                                <i class="fas fa-qrcode"></i>
+                                Scan QR Code
+                            </a>
+                            <a href="/pair" class="btn btn-outline">
+                                <i class="fas fa-mobile-alt"></i>
+                                Use Pairing Code
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                `;
+            } else if (page === 'qr') {
+                return `
+                <div class="container">
+                    <div class="hero">
+                        <h1 class="hero-title">QR Code Login</h1>
+                        <p class="hero-subtitle">Scan this QR code with your WhatsApp to link your device</p>
+                    </div>
+                    
+                    <div class="card fade-in">
+                        ${getStatusBadge(botStatus)}
+                        ${latestQR ? `
+                            <div class="qr-container">
+                                <img src="${latestQR}" alt="WhatsApp QR Code" class="qr-code">
+                                <p class="qr-instruction">
+                                    <i class="fas fa-info-circle"></i>
+                                    Open WhatsApp → Settings → Linked Devices → Scan QR Code
+                                </p>
+                            </div>
+                        ` : `
+                            <div class="qr-container">
+                                <i class="fas fa-qrcode qr-placeholder"></i>
+                                <h3>QR Code Not Available</h3>
+                                <p>Please wait for the bot to generate a QR code or use the pairing method instead.</p>
+                            </div>
+                        `}
+                        
+                        <div class="action-buttons">
+                            <a href="/pair" class="btn btn-outline">
+                                <i class="fas fa-mobile-alt"></i>
+                                Use Pairing Code Instead
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                `;
+            } else if (page === 'pair') {
+                return `
+                <div class="container">
+                    <div class="hero">
+                        <h1 class="hero-title">Pair Your Device</h1>
+                        <p class="hero-subtitle">Enter your phone number to get a pairing code for WhatsApp</p>
+                    </div>
+                    
+                    <div class="card fade-in">
+                        ${getStatusBadge(botStatus)}
+                        
+                        <form method="POST" id="pairForm" class="pair-form">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-phone"></i>
+                                    Phone Number (with country code)
+                                </label>
+                                <input 
+                                    type="text" 
+                                    name="phone" 
+                                    class="form-input" 
+                                    placeholder="e.g. 1234567890" 
+                                    required 
+                                    pattern="[0-9]+"
+                                    title="Enter numbers only (no + or spaces)"
+                                >
+                                <small class="form-help">
+                                    <i class="fas fa-info-circle"></i>
+                                    Enter your number without country code prefix (e.g., 1234567890)
+                                </small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-block">
+                                <i class="fas fa-key"></i>
+                                Generate Pairing Code
+                            </button>
+                        </form>
+                        
+                        ${botStatus !== 'connecting' ? `
+                            <div class="warning-message">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Note:</strong> Pairing codes only work when the bot is in "Connecting" state.
+                                Please wait for the status to change to "Connecting" before generating a code.
+                            </div>
+                        ` : ''}
+                        
+                        <div class="action-buttons">
+                            <a href="/qr" class="btn btn-outline">
+                                <i class="fas fa-qrcode"></i>
+                                Use QR Code Instead
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                `;
+            } else if (page === 'pair-success') {
+                return `
+                <div class="container">
+                    <div class="hero">
+                        <h1 class="hero-title">Pairing Code Generated</h1>
+                        <p class="hero-subtitle">Use this code to link your WhatsApp account</p>
+                    </div>
+                    
+                    <div class="card fade-in success-card">
+                        ${getStatusBadge(botStatus)}
+                        
+                        <div class="phone-info">
+                            <p class="phone-label">For phone number:</p>
+                            <h3 class="phone-number">+${phoneNumber}</h3>
+                        </div>
+                        
+                        <div class="pairing-code pulse">
+                            ${pairingCode.match(/.{1,4}/g)?.join(' ') || pairingCode}
+                        </div>
+                        
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <strong>Open WhatsApp</strong>
+                                    <p>Launch WhatsApp on your mobile device</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <strong>Go to Linked Devices</strong>
+                                    <p>Settings → Linked Devices</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <strong>Link a Device</strong>
+                                    <p>Tap "Link a Device" option</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <strong>Enter Code</strong>
+                                    <p>Type: <strong>${pairingCode}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="expiry-note">
+                            <i class="fas fa-clock"></i>
+                            This code will expire in 10 minutes
+                        </p>
+                        
+                        <div class="action-buttons">
+                            <a href="/pair" class="btn">
+                                <i class="fas fa-plus"></i>
+                                New Code
+                            </a>
+                            <a href="/qr" class="btn btn-outline">
+                                <i class="fas fa-qrcode"></i>
+                                QR Code
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                `;
+            } else if (page === 'error') {
+                return `
+                <div class="container">
+                    <div class="card fade-in error-card">
+                        <i class="fas fa-exclamation-triangle error-icon"></i>
+                        <h2>Error</h2>
+                        <p>${errorMessage}</p>
+                        <div class="action-buttons">
+                            <a href="/pair" class="btn">
+                                <i class="fas fa-redo"></i>
+                                Try Again
+                            </a>
+                            <a href="/qr" class="btn btn-outline">
+                                <i class="fas fa-qrcode"></i>
+                                Use QR Code
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+        })()}
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="https://abztech.xyz" target="_blank" class="footer-link">
+                        <i class="fas fa-globe"></i> Website
+                    </a>
+                    <a href="/api/status" class="footer-link" target="_blank">
+                        <i class="fas fa-heart-pulse"></i> API Status
+                    </a>
+                </div>
+                <p class="copyright">
+                    &copy; 2024 ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
+
+<script>
+function getStatusBadge(status) {
+    const statusConfig = {
+        'connecting': { class: 'status-connecting', icon: 'fas fa-sync-alt fa-spin', text: 'Connecting' },
+        'connected': { class: 'status-connected', icon: 'fas fa-check-circle', text: 'Connected' },
+        'disconnected': { class: 'status-disconnected', icon: 'fas fa-times-circle', text: 'Disconnected' }
+    };
+    
+    const config = statusConfig[status] || statusConfig.disconnected;
+    return \`<div class="status-badge \${config.class} fade-in">
+        <i class="\${config.icon}"></i>
+        \${config.text}
+    </div>\`;
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const pairForm = document.getElementById('pairForm');
+    if (pairForm) {
+        pairForm.addEventListener('submit', function(e) {
+            const button = this.querySelector('button[type="submit"]');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Code...';
+            button.disabled = true;
+        });
+    }
+
+    setInterval(() => {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                const statusBadge = document.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.outerHTML = getStatusBadge(data.botStatus);
+                }
+            })
+            .catch(console.error);
+    }, 5000);
+});
+</script>
