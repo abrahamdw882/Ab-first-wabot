@@ -1,5 +1,5 @@
-
 console.log('ABZTech WhatsApp Bot Interface Loaded');
+
 function getStatusBadge(status) {
     const statusConfig = {
         'connecting': { class: 'status-connecting', icon: 'fas fa-sync-alt fa-spin', text: 'Connecting' },
@@ -16,6 +16,7 @@ function getStatusBadge(status) {
         config: config
     };
 }
+
 function updateStatusBadge(status) {
     const statusBadge = document.getElementById('status-badge');
     const statusText = document.getElementById('status-text');
@@ -29,6 +30,7 @@ function updateStatusBadge(status) {
         statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
     }
 }
+
 function updateQRCode(qrUrl) {
     const qrContainer = document.getElementById('qr-container');
     if (qrContainer && qrUrl) {
@@ -41,8 +43,17 @@ function updateQRCode(qrUrl) {
                 </p>
             </div>
         `;
+    } else if (qrContainer && !qrUrl) {
+        qrContainer.innerHTML = `
+            <div class="qr-container">
+                <i class="fas fa-qrcode qr-placeholder"></i>
+                <h3>QR Code Not Available</h3>
+                <p>Please wait for the bot to generate a QR code or use the pairing method instead.</p>
+            </div>
+        `;
     }
 }
+
 function updatePairingFormStatus(status) {
     const warningMessage = document.getElementById('warning-message');
     if (warningMessage) {
@@ -53,20 +64,24 @@ function updatePairingFormStatus(status) {
         }
     }
 }
+
 async function updateStatus() {
     try {
         const response = await fetch('/api/status');
         const data = await response.json();
+        window.botStatus = data.botStatus;
         
         updateStatusBadge(data.botStatus);
         updateQRCode(data.latestQR);
         updatePairingFormStatus(data.botStatus);
+        
         document.title = `ABZTech - ${data.botStatus.charAt(0).toUpperCase() + data.botStatus.slice(1)}`;
         
     } catch (error) {
         console.error('Error fetching status:', error);
     }
 }
+
 function setupPairingForm() {
     const pairForm = document.getElementById('pairForm');
     if (pairForm) {
@@ -99,7 +114,7 @@ function setupPairingForm() {
                             </div>
                             
                             <div class="card fade-in success-card">
-                                ${getStatusBadge(botStatus).html}
+                                ${getStatusBadge(window.botStatus).html}
                                 
                                 <div class="phone-info">
                                     <p class="phone-label">For phone number:</p>
@@ -173,10 +188,14 @@ function setupPairingForm() {
         });
     }
 }
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing ABZTech WhatsApp Bot interface...');
+    
     setupPairingForm();
     updateStatus();
-    setInterval(updateStatus, 5000);
+    
+    setInterval(updateStatus, 2000);
 });
-let botStatus = 'disconnected';
+
+window.botStatus = 'disconnected';
