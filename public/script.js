@@ -13,6 +13,9 @@ function getStatusConfig(status) {
 function updateStatusBadge(status) {
     const statusBadge = document.getElementById('status-badge');
     const statusText = document.getElementById('status-text');
+     if (!statusBadge || !statusText) {
+        return;
+    }
     const statusIcon = statusBadge.querySelector('i');
     
     if (statusBadge && statusText && statusIcon) {
