@@ -1,28 +1,26 @@
 console.log('ABZTech WhatsApp Bot Interface Loaded');
 
-function getStatusBadge(status) {
+function getStatusConfig(status) {
     const statusConfig = {
         'connecting': { class: 'status-connecting', icon: 'fas fa-sync-alt fa-spin', text: 'Connecting' },
         'connected': { class: 'status-connected', icon: 'fas fa-check-circle', text: 'Connected' },
         'disconnected': { class: 'status-disconnected', icon: 'fas fa-times-circle', text: 'Disconnected' }
     };
     
-    const config = statusConfig[status] || statusConfig.disconnected;
-    return {
-        html: `<div class="status-badge ${config.class} fade-in">
-            <i class="${config.icon}"></i>
-            <span id="status-text">${config.text}</span>
-        </div>`,
-        config: config
-    };
+    return statusConfig[status] || statusConfig.disconnected;
 }
 
 function updateStatusBadge(status) {
     const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const statusIcon = statusBadge.querySelector('i');
     
-    if (statusBadge) {
-        const badge = getStatusBadge(status);
-        statusBadge.outerHTML = badge.html;
+    if (statusBadge && statusText && statusIcon) {
+        const config = getStatusConfig(status);
+        statusBadge.classList.remove('status-connecting', 'status-connected', 'status-disconnected');
+        statusBadge.classList.add(config.class);
+        statusIcon.className = config.icon;
+        statusText.textContent = config.text;
     }
 }
 
@@ -62,21 +60,28 @@ function updatePairingFormStatus(status) {
 
 async function updateStatus() {
     try {
-        const response = await fetch('/api/status');
+        const response = await fetch('/api/status?' + new Date().getTime());
         const data = await response.json();
         window.botStatus = data.botStatus;
         
-        console.log('Status update:', data.botStatus);
+        console.log('Status update:', data.botStatus, 'Has QR:', data.hasQR);
         
         updateStatusBadge(data.botStatus);
-        updateQRCode(data.latestQR);
+        
+        if (data.hasQR && data.latestQR) {
+            updateQRCode(data.latestQR);
+        } else {
+            updateQRCode(null);
+        }
+        
         updatePairingFormStatus(data.botStatus);
         
-        document.title = `ABZTech - ${data.botStatus.charAt(0).toUpperCase() + data.botStatus.slice(1)}`;
+        document.title = `QR Code - ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ (${data.botStatus.charAt(0).toUpperCase() + data.botStatus.slice(1)})`;
         
     } catch (error) {
         console.error('Error fetching status:', error);
         updateStatusBadge('disconnected');
+        updateQRCode(null);
     }
 }
 
@@ -112,7 +117,10 @@ function setupPairingForm() {
                             </div>
                             
                             <div class="card fade-in success-card">
-                                ${getStatusBadge(window.botStatus).html}
+                                <div class="status-badge ${getStatusConfig(window.botStatus).class} fade-in">
+                                    <i class="${getStatusConfig(window.botStatus).icon}"></i>
+                                    <span>${getStatusConfig(window.botStatus).text}</span>
+                                </div>
                                 
                                 <div class="phone-info">
                                     <p class="phone-label">For phone number:</p>
