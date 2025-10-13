@@ -11,7 +11,7 @@ function getStatusBadge(status) {
     return {
         html: `<div class="status-badge ${config.class} fade-in">
             <i class="${config.icon}"></i>
-            ${config.text}
+            <span id="status-text">${config.text}</span>
         </div>`,
         config: config
     };
@@ -66,6 +66,8 @@ async function updateStatus() {
         const data = await response.json();
         window.botStatus = data.botStatus;
         
+        console.log('Status update:', data.botStatus);
+        
         updateStatusBadge(data.botStatus);
         updateQRCode(data.latestQR);
         updatePairingFormStatus(data.botStatus);
@@ -74,6 +76,7 @@ async function updateStatus() {
         
     } catch (error) {
         console.error('Error fetching status:', error);
+        updateStatusBadge('disconnected');
     }
 }
 
