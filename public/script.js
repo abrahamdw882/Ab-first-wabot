@@ -19,15 +19,10 @@ function getStatusBadge(status) {
 
 function updateStatusBadge(status) {
     const statusBadge = document.getElementById('status-badge');
-    const statusText = document.getElementById('status-text');
     
     if (statusBadge) {
         const badge = getStatusBadge(status);
         statusBadge.outerHTML = badge.html;
-    }
-    
-    if (statusText) {
-        statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
     }
 }
 
