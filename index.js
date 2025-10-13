@@ -79,7 +79,7 @@ function saveAuthFilesToDB() {
 }
 
 async function startBot() {
-    console.log('🚀 Starting WhatsApp Bot...');
+    console.log(' Starting WhatsApp Bot...');
     isConnecting = true;
     
     try {
@@ -98,11 +98,11 @@ async function startBot() {
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
             if (qr) {
-                console.log('🔄 Generating QR code for web...');
+                console.log('Generating QR code for web...');
                 QRCode.toDataURL(qr, (err, url) => { 
                     if (!err) {
                         latestQR = url;
-                        console.log('✅ QR code generated for web');
+                        console.log('QR code generated for web');
                     }
                 });
             }
@@ -352,6 +352,6 @@ http.createServer(async (req, res) => {
     res.writeHead(404);
     res.end('Not found');
 }).listen(PORT, () => {
-    console.log(`🚀 ABZTech WhatsApp Bot running at http://localhost:${PORT}`);
-    console.log(`📁 Serving static files from: ${path.join(__dirname, 'public')}`);
+    console.log(`Bot running at http://localhost:${PORT}`);
+    console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
 });
