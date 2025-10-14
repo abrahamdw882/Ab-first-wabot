@@ -1,4 +1,5 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage, generateWAMessageFromContent } = require('@whiskeysockets/baileys');
+const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion
+} = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -84,9 +85,12 @@ async function startBot() {
     
     try {
         await restoreAuthFiles();
+        const { version, isLatest } = await fetchLatestWaWebVersion();
+        console.log(` Using WA v${version.join(".")}, isLatest: ${isLatest}`);
 
         const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
         sock = makeWASocket({
+            version, 
             logger: pino({ level: 'info' }),
             auth: state,
             printQRInTerminal: false,
@@ -97,6 +101,7 @@ async function startBot() {
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
+
             if (qr) {
                 console.log('Generating QR code for web...');
                 QRCode.toDataURL(qr, (err, url) => { 
@@ -112,9 +117,20 @@ async function startBot() {
                 isConnecting = false;
                 if (presenceInterval) clearInterval(presenceInterval);
 
-                const statusCode = (lastDisconnect?.error instanceof Boom) ? lastDisconnect.error.output.statusCode : 0;
+                const statusCode = (lastDisconnect?.error instanceof Boom)
+                    ? lastDisconnect.error.output.statusCode
+                    : 0;
 
-                if (statusCode !== DisconnectReason.loggedOut) {
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+                console.log(
+                    "Connection closed due to",
+                    lastDisconnect?.error?.message,
+                    ", reconnecting:",
+                    shouldReconnect
+                );
+
+                if (shouldReconnect) {
                     console.log('Reconnecting in 10 seconds...');
                     setTimeout(() => startBot(), 10000);
                 } else {
@@ -151,6 +167,7 @@ async function startBot() {
             saveAuthFilesToDB();
         });
 
+
         const plugins = new Map();
         const pluginPath = path.join(__dirname, PLUGIN_FOLDER);
         try {
@@ -173,6 +190,7 @@ async function startBot() {
             }
         } catch (error) { console.error('Error loading plugins:', error); }
 
+       
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
             const rawMsg = messages[0];
@@ -203,6 +221,7 @@ async function startBot() {
         setTimeout(() => startBot(), 10000);
     }
 }
+
 function serveStaticFile(urlPath, res) {
     const staticPath = path.join(__dirname, 'public');
     const filePath = path.join(staticPath, urlPath);
@@ -241,6 +260,7 @@ function serveStaticFile(urlPath, res) {
         res.end(data);
     });
 }
+
 http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -251,18 +271,20 @@ http.createServer(async (req, res) => {
         res.writeHead(200);
         return res.end();
     }
+
     if (url.pathname === '/style.css' || url.pathname === '/script.js') {
         serveStaticFile(url.pathname, res);
         return;
     }
+
     if (url.pathname === '/' || url.pathname === '/qr' || url.pathname === '/pair') {
         let page = 'index.html';
         if (url.pathname === '/qr') page = 'qr.html';
         if (url.pathname === '/pair') page = 'pair.html';
-        
         serveStaticFile(page, res);
         return;
     }
+
     if (url.pathname === '/api/status') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
@@ -278,6 +300,7 @@ http.createServer(async (req, res) => {
         }));
         return;
     }
+
     if (url.pathname === '/api/pair' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
@@ -293,7 +316,6 @@ http.createServer(async (req, res) => {
                 }
 
                 phoneNumber = phoneNumber.replace(/\D/g, '');
-
                 if (phoneNumber.length < 8) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Invalid phone number' }));
