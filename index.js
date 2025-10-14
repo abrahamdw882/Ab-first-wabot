@@ -30,6 +30,10 @@ let pairingCodes = new Map();
 let presenceInterval = null;
 let sock = null;
 let isConnecting = false;
+let isConnected = false;
+let reconnectInterval = null;
+let refreshInterval = null;
+
 const db = new sqlite3.Database('./session.db');
 
 db.serialize(() => {
@@ -94,43 +98,72 @@ async function startBot() {
             markOnlineOnConnect: true,
             syncFullHistory: true
         });
-
         sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-            if (qr) {
-                console.log('Generating QR code for web...');
-                QRCode.toDataURL(qr, (err, url) => { 
-                    if (!err) {
-                        latestQR = url;
-                        console.log('QR code generated for web');
-                    }
-                });
-            }
-
+            const { connection, lastDisconnect, qr, isNewLogin } = update;
+            
             if (connection === 'close') {
-                botStatus = 'disconnected';
-                isConnecting = false;
+                const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
                 if (presenceInterval) clearInterval(presenceInterval);
-
-                const statusCode = (lastDisconnect?.error instanceof Boom) ? lastDisconnect.error.output.statusCode : 0;
-
-                if (statusCode !== DisconnectReason.loggedOut) {
-                    console.log('Reconnecting in 10 seconds...');
-                    setTimeout(() => startBot(), 10000);
-                } else {
-                    console.log('Logged out. Cleaning up...');
+                if (refreshInterval) clearInterval(refreshInterval);
+                
+                if (reason === DisconnectReason.loggedOut) {
+                    console.log('🔴Logged out. Cleaning up...');
                     if (fs.existsSync(AUTH_FOLDER)) fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-                    db.run("DELETE FROM sessions", (err) => { if (err) console.error('DB clear failed:', err); });
+                    db.run("DELETE FROM sessions", (err) => { 
+                        if (err) console.error('DB clear failed:', err); 
+                    });
+                    console.log('Restarting in 3 seconds...');
                     setTimeout(() => startBot(), 3000);
+                } else if ([
+                    DisconnectReason.connectionClosed,
+                    DisconnectReason.connectionLost,
+                    DisconnectReason.connectionReplaced,
+                    DisconnectReason.timedOut,
+                    DisconnectReason.badSession,
+                    DisconnectReason.restartRequired,
+                    DisconnectReason.rateLimitExceeded
+                ].includes(reason)) {
+                    console.log(`🔧 Disconnected (${DisconnectReason[reason] || reason}), auto-reconnecting...`);
+                    isConnected = false;
+                    botStatus = 'disconnected';
+                    isConnecting = false;
+                    
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = setInterval(() => {
+                        console.log('🔄 Attempting reconnection...');
+                        startBot();
+                    }, 4000);
+                } else {
+                    console.log(`Disconnected (${DisconnectReason[reason] || reason}), reconnecting...`);
+                    botStatus = 'disconnected';
+                    isConnecting = false;
+                    if (!isConnected) {
+                        reconnectInterval = setInterval(() => startBot(), 4000);
+                    }
                 }
+                
+                isConnected = false;
+                
             } else if (connection === 'open') {
+                console.log('Bot is connected ✅');
+                
+                clearInterval(reconnectInterval);
+                
+                isConnected = true;
                 botStatus = 'connected';
                 isConnecting = false;
-                console.log('Bot is connected ✅');
-
                 presenceInterval = setInterval(() => {
-                    if (sock?.ws?.readyState === 1) sock.sendPresenceUpdate('available');
+                    if (sock?.ws?.readyState === 1) {
+                        sock.sendPresenceUpdate('available');
+                    }
                 }, 10000);
+                refreshInterval = setInterval(() => {
+                    console.log('Refreshing connection...');
+                    if (sock) {
+                        sock.end();
+                        setTimeout(() => startBot(), 2000);
+                    }
+                }, 10 * 60 * 1000);
 
                 try { 
                     await sock.sendMessage(sock.user.id, { 
@@ -143,6 +176,19 @@ async function startBot() {
                 botStatus = 'connecting';
                 isConnecting = true;
                 console.log('Bot is connecting...');
+            }
+            if (qr) {
+                console.log('📱 QR Code ready, scan now!');
+                QRCode.toDataURL(qr, (err, url) => { 
+                    if (!err) {
+                        latestQR = url;
+                        console.log('✅ QR code generated for web');
+                    }
+                });
+            }
+
+            if (isNewLogin) {
+                console.log('New login detected!');
             }
         });
 
@@ -199,10 +245,13 @@ async function startBot() {
 
     } catch (error) {
         console.error('Bot startup error:', error);
+        isConnected = false;
+        botStatus = 'disconnected';
         isConnecting = false;
         setTimeout(() => startBot(), 10000);
     }
 }
+
 function serveStaticFile(urlPath, res) {
     const staticPath = path.join(__dirname, 'public');
     const filePath = path.join(staticPath, urlPath);
@@ -241,6 +290,7 @@ function serveStaticFile(urlPath, res) {
         res.end(data);
     });
 }
+
 http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -301,7 +351,6 @@ http.createServer(async (req, res) => {
                 }
 
                 console.log(`📱 Requesting pairing code for: ${phoneNumber}, Bot status: ${botStatus}`);
-                
                 if (botStatus !== 'connecting' || !sock) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ 
