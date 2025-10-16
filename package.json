@@ -1,20 +1,25 @@
 {
   "name": "abZtech_MD",
   "version": "1.0.0",
-  "description": "",
+  "description": "AbZtech WhatsApp Bot",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "pm2 start index.js --attach --no-daemon"
+    "bot": "npx pm2 start index.js --attach --no-daemon",
+    "start": "yarn run bot"
   },
   "author": "AbZtech",
   "license": "MIT",
   "private": true,
-  "keywords": [],
+  "keywords": [
+    "whatsapp-bot",
+    "baileys",
+    "abztech"
+  ],
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "^7.0.0-rc.3",
+    "@whiskeysockets/baileys": "^6.7.20",
     "axios": "^1.6.8",
     "node-fetch": "^2.7.0",
     "os": "^0.1.2",
