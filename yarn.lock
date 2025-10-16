@@ -300,17 +300,16 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.17.60.tgz#35f3d6213daed95da7f0f73e75bcc6980e90597b"
   integrity sha512-F0KIgDJfy2nA3zMLmWGKxcH2ZVEtCZXHHdOQs2gSaQ27+lNeEfGxzkIw90aXswATX7AZ33tahPbzy6KAfUreVw==
 
-"@whiskeysockets/baileys@^7.0.0-rc.3":
-  version "7.0.0-rc.3"
-  resolved "https://registry.yarnpkg.com/@whiskeysockets/baileys/-/baileys-7.0.0-rc.3.tgz#37502daf7f0632d40e3f8b194ddd88e6a126de17"
-  integrity sha512-aksCC3Df/cytmBg0cizIvoVappaP8dE+9kU5vFjtCHjoEpCzlK8/ESozgHJSkm5LQ7Ikygl6aZLYHB2C/qCdOA==
+"@whiskeysockets/baileys@^6.7.20":
+  version "6.7.20"
+  resolved "https://registry.yarnpkg.com/@whiskeysockets/baileys/-/baileys-6.7.20.tgz#6a3e44cdf5a580759c65d99ded943dba67f718b5"
+  integrity sha512-KH/jaCSlZbnAnQZhSORIJ9VCuh6aLgYlLo9YZIAbGeL5ovm0S/mx2UNJiPotu+dsno9AwGLIaciGI6BU8twhdA==
   dependencies:
     "@cacheable/node-cache" "^1.4.0"
     "@hapi/boom" "^9.1.3"
     async-mutex "^0.5.0"
     axios "^1.6.0"
     libsignal "git+https://github.com/whiskeysockets/libsignal-node"
-    lru-cache "^11.1.0"
     music-metadata "^11.7.0"
     pino "^9.6"
     protobufjs "^7.2.4"
@@ -1433,11 +1432,6 @@ long@^5.0.0:
   version "5.3.2"
   resolved "https://registry.yarnpkg.com/long/-/long-5.3.2.tgz#1d84463095999262d7d7b7f8bfd4a8cc55167f83"
   integrity sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==
-
-lru-cache@^11.1.0:
-  version "11.2.1"
-  resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-11.2.1.tgz#d426ac471521729c6c1acda5f7a633eadaa28db2"
-  integrity sha512-r8LA6i4LP4EeWOhqBaZZjDWwehd1xUJPCJd9Sv300H0ZmcUER4+JPh7bqqZeqs1o5pgtgvXm+d9UGrB5zZGDiQ==
 
 lru-cache@^6.0.0:
   version "6.0.0"
