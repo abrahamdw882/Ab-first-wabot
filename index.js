@@ -51,6 +51,9 @@ db.serialize(() => {
     });
 });
 
+/**
+ * Restores authentication files from the database.
+ */
 function restoreAuthFiles() {
     return new Promise((resolve) => {
         db.all("SELECT * FROM sessions", (err, rows) => {
@@ -64,6 +67,11 @@ function restoreAuthFiles() {
     });
 }
 
+/**
+ * Saves authentication files to the database.
+ *
+ * This function checks if the AUTH_FOLDER exists and reads all files within it. For each file, it reads the content and attempts to insert or replace the corresponding entry in the sessions table of the database. Errors during the database operation are logged to the console, and any exceptions encountered during the process are also caught and logged.
+ */
 function saveAuthFilesToDB() {
     try {
         if (!fs.existsSync(AUTH_FOLDER)) return;

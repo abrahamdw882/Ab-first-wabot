@@ -7,6 +7,17 @@
 
 const { downloadMediaMessage } = require('@whiskeysockets/baileys'); 
 
+/**
+ * Serialize a message object for further processing and interaction.
+ *
+ * This function extracts various properties from the message, including sender information, body content, and media type.
+ * It also handles quoted messages and provides methods for replying, sending, reacting, forwarding, and downloading media.
+ * Group metadata is fetched if the message is from a group chat, and the function ensures that all necessary data is structured for easy access.
+ *
+ * @param sock - The socket connection used for sending and receiving messages.
+ * @param msg - The message object containing details about the message to be serialized.
+ * @returns An object representing the serialized message with methods for interaction.
+ */
 async function serializeMessage(sock, msg) {
     const from = msg.key.remoteJid;
     const isGroup = from.endsWith('@g.us');
