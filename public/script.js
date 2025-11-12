@@ -10,6 +10,16 @@ function getStatusConfig(status) {
     return statusConfig[status] || statusConfig.disconnected;
 }
 
+/**
+ * Updates the status badge based on the provided status.
+ *
+ * This function retrieves the status badge and status text elements from the DOM.
+ * If both elements exist, it fetches the configuration for the given status using
+ * the getStatusConfig function. It then updates the badge's class, icon, and text
+ * accordingly, ensuring to remove any previous status classes.
+ *
+ * @param {string} status - The current status to update the badge with.
+ */
 function updateStatusBadge(status) {
     const statusBadge = document.getElementById('status-badge');
     const statusText = document.getElementById('status-text');
@@ -27,6 +37,15 @@ function updateStatusBadge(status) {
     }
 }
 
+/**
+ * Updates the QR code display in the specified container.
+ *
+ * This function checks if the qrContainer element exists and whether a valid qrUrl is provided.
+ * If both are present, it updates the container with the QR code image and instructions.
+ * If the qrUrl is not provided, it displays a placeholder indicating that the QR code is not available.
+ *
+ * @param {string} qrUrl - The URL of the QR code image to be displayed.
+ */
 function updateQRCode(qrUrl) {
     const qrContainer = document.getElementById('qr-container');
     if (qrContainer && qrUrl) {
@@ -50,6 +69,9 @@ function updateQRCode(qrUrl) {
     }
 }
 
+/**
+ * Updates the visibility of the warning message based on the connection status.
+ */
 function updatePairingFormStatus(status) {
     const warningMessage = document.getElementById('warning-message');
     if (warningMessage) {
@@ -88,6 +110,14 @@ async function updateStatus() {
     }
 }
 
+/**
+ * Sets up the pairing form submission handler.
+ *
+ * This function retrieves the pairing form element and adds an event listener for the submit event.
+ * Upon submission, it prevents the default behavior, updates the submit button to indicate loading,
+ * and sends the form data to the server. Depending on the server response, it either displays the
+ * generated pairing code and instructions or alerts the user of an error.
+ */
 function setupPairingForm() {
     const pairForm = document.getElementById('pairForm');
     if (pairForm) {
