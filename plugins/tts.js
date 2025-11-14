@@ -7,7 +7,15 @@ module.exports = {
 
     async execute(sock, m) {
         try {
-            let text = m.text?.replace(/^\.?tts\s*/i, '').trim();
+            let text = m.text?.trim();
+            const parts = text.split(/\s+/);
+            if (parts.length > 1) {
+                parts.shift();
+                text = parts.join(' ').trim();
+            } else {
+                text = '';
+            }
+            
             if (!text) return m.reply('Please provide some text to convert to speech.');
 
             const name = m.pushName || m.sender.split('@')[0];
@@ -50,7 +58,7 @@ module.exports = {
                 { quoted }
             );
         } catch (err) {
-            console.error(' TTS plugin error:', err);
+            console.error('TTS plugin error:', err);
             m.reply('Failed to generate TTS.');
         }
     },
