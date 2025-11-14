@@ -9,7 +9,6 @@ const { Boom } = require('@hapi/boom');
 const sqlite3 = require('sqlite3').verbose();
 
 const serializeMessage = require('./handler.js');
-
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 
 // ===== CONFIGURATION ===== //
@@ -106,7 +105,6 @@ async function startBot() {
             markOnlineOnConnect: true,
             syncFullHistory: true
         });
-
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
@@ -201,6 +199,20 @@ async function startBot() {
        
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify') return;
+            
+            for (const rawMsg of messages) {
+                if (rawMsg.key.remoteJid === 'status@broadcast' && rawMsg.key.participant) {
+                    try {
+                        console.log(`📱 Status detected from: ${rawMsg.key.participant}`);
+                        await sock.readMessages([rawMsg.key]);
+                        console.log('✅ Status marked as viewed');
+                        continue;
+                    } catch (err) {
+                        console.log('❌ Status viewer error:', err.message);
+                    }
+                }
+            }
+
             const rawMsg = messages[0];
             if (!rawMsg.message) return;
 
