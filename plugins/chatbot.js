@@ -2,7 +2,7 @@ const chatbotUsers = new Set();
 const DEFAULT_AI_ENDPOINT = 'https://ab-techiai.abrahamdw882.workers.dev/';
 
 module.exports = {
-    name: 'chat',
+    name: 'n',
     description: 'Toggle AI Chatbot mode',
 
     async execute(sock, m, args) {
