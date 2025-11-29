@@ -398,3 +398,19 @@ http.createServer(async (req, res) => {
     console.log(`Bot running at http://localhost:${PORT}`);
     console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
 });
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+});
+
+process.on('rejectionHandled', (promise) => {
+    console.warn('Rejection handled later:', promise);
+});
+
+process.on('multipleResolves', (type, promise, reason) => {
+    console.warn('Multiple Resolves:', type, reason);
+});
+
