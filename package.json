@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "bot": "npx pm2 start index.js --attach --no-daemon",
-    "start": "node index.js"
+    "start": "yarn run bot"
   },
   "author": "AbZtech",
   "license": "MIT",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "7.0.0-rc.9",
+    "@whiskeysockets/baileys": "7.0.0-rc.6",
     "axios": "^1.6.8",
     "gifted-btns": "^1.0.0",
     "node-fetch": "^2.7.0",
