@@ -22,21 +22,44 @@ async function serializeMessage(sock, msg) {
     const from = msg.key.remoteJid;
     const isGroup = from.endsWith('@g.us');
     const sender = msg.key.fromMe ? sock.user.id : (isGroup ? msg.key.participant : from);
-    const pushName = msg.pushName || sender.split('@')[0];
+    const pushName = msg.pushName || (sender ? sender.split('@')[0] : 'Unknown');
 
-    const body =
-        msg.message?.conversation ||
-        msg.message?.extendedTextMessage?.text ||
-        msg.message?.imageMessage?.caption ||
-        msg.message?.videoMessage?.caption ||
-        msg.message?.documentMessage?.caption ||
-        msg.message?.buttonsResponseMessage?.selectedButtonId ||
-        msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
-        msg.message?.templateButtonReplyMessage?.selectedId ||
-        msg.message?.interactiveResponseMessage?.body?.text ||
-        '';
-
+    // Safely extract body content with proper null checks
+    let body = '';
     const type = Object.keys(msg.message || {})[0] || '';
+    
+    // Handle interactive button responses
+    if (msg.message?.interactiveResponseMessage) {
+        body = msg.message.interactiveResponseMessage.buttonId || 
+               msg.message.interactiveResponseMessage?.body?.text || 
+               '';
+    }
+    // Handle other message types
+    else if (msg.message?.conversation) {
+        body = msg.message.conversation;
+    }
+    else if (msg.message?.extendedTextMessage?.text) {
+        body = msg.message.extendedTextMessage.text;
+    }
+    else if (msg.message?.imageMessage?.caption) {
+        body = msg.message.imageMessage.caption;
+    }
+    else if (msg.message?.videoMessage?.caption) {
+        body = msg.message.videoMessage.caption;
+    }
+    else if (msg.message?.documentMessage?.caption) {
+        body = msg.message.documentMessage.caption;
+    }
+    else if (msg.message?.buttonsResponseMessage?.selectedButtonId) {
+        body = msg.message.buttonsResponseMessage.selectedButtonId;
+    }
+    else if (msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId) {
+        body = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
+    }
+    else if (msg.message?.templateButtonReplyMessage?.selectedId) {
+        body = msg.message.templateButtonReplyMessage.selectedId;
+    }
+
     const isMedia = ['imageMessage', 'videoMessage', 'documentMessage', 'audioMessage', 'stickerMessage'].includes(type);
     const mediaType = type.replace('Message', '').toLowerCase();
     const mimetype = msg.message?.[type]?.mimetype || null;
@@ -75,6 +98,8 @@ async function serializeMessage(sock, msg) {
         mediaType,
         mimetype,
         quoted,
+        isButtonResponse: !!msg.message?.interactiveResponseMessage,
+        buttonId: msg.message?.interactiveResponseMessage?.buttonId || null,
         reply: async (text, options={}) => await sock.sendMessage(from, { text, ...options }, { quoted: msg }),
         send: async (content, options={}) => await sock.sendMessage(from, typeof content === 'string' ? { text: content, ...options } : content, { quoted: msg }),
         react: async emoji => await sock.sendMessage(from, { react: { text: emoji, key: msg.key } }),
