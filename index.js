@@ -1,3 +1,4 @@
+
 const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
@@ -7,7 +8,7 @@ const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
 const sqlite3 = require('sqlite3').verbose();
-
+const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 
