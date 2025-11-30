@@ -104,7 +104,7 @@ async function startBot() {
             printQRInTerminal: false,
             keepAliveIntervalMs: 10000,
             markOnlineOnConnect: true,
-            syncFullHistory: true
+            syncFullHistory: false
         });
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
