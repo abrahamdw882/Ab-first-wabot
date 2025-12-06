@@ -41,6 +41,7 @@ module.exports = {
         axios,
         util,
         console,
+        proto, 
         generateWAMessageFromContent: global.generateWAMessageFromContent
       };
 
