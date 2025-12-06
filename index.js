@@ -1,5 +1,5 @@
 
-const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion
+const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion,proto
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
@@ -11,7 +11,7 @@ const sqlite3 = require('sqlite3').verbose();
 const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
 global.generateWAMessageFromContent = generateWAMessageFromContent;
-
+global.proto = proto;
 // ===== CONFIGURATION ===== //
 global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './auth_info_multi';
