@@ -1,4 +1,3 @@
-
 const { default: makeWASocket,useMultiFileAuthState,  DisconnectReason, downloadMediaMessage,generateWAMessageFromContent,fetchLatestWaWebVersion,proto
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
@@ -7,15 +6,16 @@ const path = require('path');
 const http = require('http');
 const QRCode = require('qrcode');
 const { Boom } = require('@hapi/boom');
-const sqlite3 = require('sqlite3').verbose();
 const { sendButtons, sendInteractiveMessage } = require('gifted-btns');
 const serializeMessage = require('./handler.js');
 global.generateWAMessageFromContent = generateWAMessageFromContent;
 global.proto = proto;
+
 // ===== CONFIGURATION ===== //
 global.BOT_PREFIX = '.';
 const AUTH_FOLDER = './auth_info_multi';
 const PLUGIN_FOLDER = './plugins';
+const SESSION_FILE = './session.json';
 const PORT = process.env.PORT || 3000;
 
 const owners = [
@@ -31,59 +31,121 @@ let pairingCodes = new Map();
 let presenceInterval = null;
 let sock = null;
 let isConnecting = false;
-const db = new sqlite3.Database('./session.db');
-
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS sessions (
-        filename TEXT PRIMARY KEY,
-        content TEXT
-    );`);
-    db.run(`CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-    );`);
-    db.get("SELECT value FROM settings WHERE key = 'prefix'", (err, row) => {
-        if (!err && row) {
-            global.BOT_PREFIX = row.value;
-            console.log(` Loaded prefix: ${global.BOT_PREFIX}`);
-        }
-        startBot();
-    });
-});
 
 /**
- * Restores authentication files from the database.
+ * Load session data from session.json
+ */
+function loadSession() {
+    try {
+        if (fs.existsSync(SESSION_FILE)) {
+            const data = fs.readFileSync(SESSION_FILE, 'utf8');
+            const session = JSON.parse(data);
+            
+            if (session.prefix) {
+                global.BOT_PREFIX = session.prefix;
+                console.log(` Loaded prefix: ${global.BOT_PREFIX}`);
+            }
+            
+            return session;
+        }
+    } catch (error) {
+        console.error('Error loading session:', error);
+    }
+    return {};
+}
+
+/**
+ * Save session data to session.json
+ */
+function saveSession(data = {}) {
+    try {
+        // Merge with existing data
+        const existing = loadSession();
+        const sessionData = { ...existing, ...data, updatedAt: new Date().toISOString() };
+        
+        // Save prefix if it exists in global
+        if (global.BOT_PREFIX) {
+            sessionData.prefix = global.BOT_PREFIX;
+        }
+        
+        fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionData, null, 2));
+    } catch (error) {
+        console.error('Error saving session:', error);
+    }
+}
+
+/**
+ * Restores authentication files from the session.json backup.
  */
 function restoreAuthFiles() {
     return new Promise((resolve) => {
-        db.all("SELECT * FROM sessions", (err, rows) => {
-            if (err) return console.error("DB restore error:", err);
-            if (!fs.existsSync(AUTH_FOLDER)) fs.mkdirSync(AUTH_FOLDER);
-            rows.forEach(row => {
-                fs.writeFileSync(path.join(AUTH_FOLDER, row.filename), row.content, 'utf8');
+        try {
+            const session = loadSession();
+            
+            if (!session.authFiles || !fs.existsSync(AUTH_FOLDER)) {
+                fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+                return resolve();
+            }
+            
+            // Restore auth files from session backup
+            Object.entries(session.authFiles).forEach(([filename, content]) => {
+                const filePath = path.join(AUTH_FOLDER, filename);
+                fs.writeFileSync(filePath, content, 'utf8');
             });
+            
+            console.log(` Restored auth files from backup`);
             resolve();
-        });
+        } catch (error) {
+            console.error('Error restoring auth files:', error);
+            resolve();
+        }
     });
 }
 
 /**
- * Saves authentication files to the database.
- *
- * This function checks if the AUTH_FOLDER exists and reads all files within it. For each file, it reads the content and attempts to insert or replace the corresponding entry in the sessions table of the database. Errors during the database operation are logged to the console, and any exceptions encountered during the process are also caught and logged.
+ * Saves authentication files to session.json backup.
  */
-function saveAuthFilesToDB() {
+function saveAuthFilesToBackup() {
     try {
         if (!fs.existsSync(AUTH_FOLDER)) return;
-        fs.readdirSync(AUTH_FOLDER).forEach(file => {
+        
+        const authFiles = {};
+        const files = fs.readdirSync(AUTH_FOLDER);
+        
+        files.forEach(file => {
             const filePath = path.join(AUTH_FOLDER, file);
-            const content = fs.readFileSync(filePath, 'utf8');
-            db.run("INSERT OR REPLACE INTO sessions (filename, content) VALUES (?, ?)", [file, content], (err) => {
-                if (err) console.error(`Failed to save ${file}:`, err);
-            });
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                authFiles[file] = content;
+            } catch (error) {
+                console.error(`Failed to read ${file}:`, error);
+            }
         });
+        
+        const session = loadSession();
+        session.authFiles = authFiles;
+        saveSession(session);
     } catch (error) {
-        console.error('Error saving auth files to DB:', error);
+        console.error('Error saving auth files to backup:', error);
+    }
+}
+
+/**
+ * Clean up old session data
+ */
+function cleanupSession() {
+    try {
+        if (fs.existsSync(SESSION_FILE)) {
+            const session = loadSession();
+            // Keep only essential data
+            const essentialData = {
+                prefix: session.prefix || global.BOT_PREFIX,
+                updatedAt: new Date().toISOString()
+            };
+            fs.writeFileSync(SESSION_FILE, JSON.stringify(essentialData, null, 2));
+        }
+    } catch (error) {
+        console.error('Error cleaning up session:', error);
     }
 }
 
@@ -92,6 +154,9 @@ async function startBot() {
     isConnecting = true;
     
     try {
+        // Load session settings first
+        loadSession();
+        
         await restoreAuthFiles();
         const { version, isLatest } = await fetchLatestWaWebVersion();
         console.log(` Using WA v${version.join(".")}, isLatest: ${isLatest}`);
@@ -106,6 +171,7 @@ async function startBot() {
             markOnlineOnConnect: true,
             syncFullHistory: false
         });
+        
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
@@ -143,7 +209,7 @@ async function startBot() {
                 } else {
                     console.log('Logged out. Cleaning up...');
                     if (fs.existsSync(AUTH_FOLDER)) fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-                    db.run("DELETE FROM sessions", (err) => { if (err) console.error('DB clear failed:', err); });
+                    cleanupSession();
                     setTimeout(() => startBot(), 3000);
                 }
             } else if (connection === 'open') {
@@ -162,6 +228,12 @@ async function startBot() {
                 } catch (err) { 
                     console.error('Could not send message:', err); 
                 }
+                
+                // Save session data on successful connection
+                saveSession({
+                    user: sock.user?.id,
+                    connectedAt: new Date().toISOString()
+                });
             } else if (connection === 'connecting') {
                 botStatus = 'connecting';
                 isConnecting = true;
@@ -171,9 +243,8 @@ async function startBot() {
 
         sock.ev.on('creds.update', async () => {
             await saveCreds();
-            saveAuthFilesToDB();
+            saveAuthFilesToBackup();
         });
-
 
         const plugins = new Map();
         const pluginPath = path.join(__dirname, PLUGIN_FOLDER);
@@ -307,6 +378,7 @@ http.createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/status') {
+        const session = loadSession();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
             status: 'online', 
@@ -316,9 +388,25 @@ http.createServer(async (req, res) => {
             hasQR: !!latestQR,
             latestQR: latestQR,
             pairingCodesCount: pairingCodes.size,
+            sessionData: {
+                hasSession: fs.existsSync(SESSION_FILE),
+                updatedAt: session.updatedAt,
+                authFilesCount: session.authFiles ? Object.keys(session.authFiles).length : 0
+            },
             version: '1.0.0',
             author: 'ABZTech'
         }));
+        return;
+    }
+
+    if (url.pathname === '/api/session' && req.method === 'GET') {
+        const session = loadSession();
+        // Don't expose auth file contents via API for security
+        if (session.authFiles) {
+            session.authFiles = { count: Object.keys(session.authFiles).length };
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(session));
         return;
     }
 
@@ -359,6 +447,8 @@ http.createServer(async (req, res) => {
                     code: pairingCode,
                     timestamp: Date.now()
                 });
+                
+                // Clean up old pairing codes
                 const now = Date.now();
                 for (let [number, data] of pairingCodes.entries()) {
                     if (now - data.timestamp > 10 * 60 * 1000) {
@@ -397,7 +487,9 @@ http.createServer(async (req, res) => {
 }).listen(PORT, () => {
     console.log(`Bot running at http://localhost:${PORT}`);
     console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
+    console.log(`Session file: ${SESSION_FILE}`);
 });
+
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
 });
@@ -414,3 +506,13 @@ process.on('multipleResolves', (type, promise, reason) => {
     console.warn('Multiple Resolves:', type, reason);
 });
 
+// Save session on exit
+process.on('SIGINT', () => {
+    saveSession({ lastExit: new Date().toISOString() });
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    saveSession({ lastExit: new Date().toISOString() });
+    process.exit(0);
+});
