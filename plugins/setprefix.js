@@ -1,5 +1,5 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./session.db');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
     name: 'setprefix',
@@ -12,21 +12,28 @@ module.exports = {
         }
 
         if (!args[0]) {
-            return m.reply(`Usage: ${global.BOT_PREFIX}setprefix <newPrefix>`);
+            return m.reply(`Current prefix: \`${global.BOT_PREFIX}\`\nUsage: ${global.BOT_PREFIX}setprefix <newPrefix>`);
         }
 
         const newPrefix = args[0];
         global.BOT_PREFIX = newPrefix;
 
-        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('prefix', ?)", [newPrefix], (err) => {
-            if (err) console.error('failed to save prefix:', err);
-        });
-        for (const owner of global.owners) {
-            try {
-                await sock.sendMessage(owner, { text: `Prefix has been changed to: \`${newPrefix}\`` });
-            } catch (err) {
-                console.error(`Could not notify owner ${owner}:`, err);
+        
+        try {
+            const sessionFile = path.join(__dirname, '../session.json');
+            let sessionData = {};
+            
+            if (fs.existsSync(sessionFile)) {
+                const data = fs.readFileSync(sessionFile, 'utf8');
+                sessionData = JSON.parse(data);
             }
+            
+            sessionData.prefix = newPrefix;
+            sessionData.updatedAt = new Date().toISOString();
+            
+            fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2));
+        } catch (error) {
+            console.error('Failed to save prefix:', error);
         }
 
         return m.reply(`Prefix changed to: \`${newPrefix}\``);
