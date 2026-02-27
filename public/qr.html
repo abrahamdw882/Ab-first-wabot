@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code - ABZTech ᴍᴜʟᴛɪᴅᴇᴠɪᴄᴇ</title>
+    <title>QR Code - ABZTech WhatsApp Bot</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -32,28 +32,58 @@
         <div class="container">
             <div class="hero">
                 <h1 class="hero-title">QR Code Login</h1>
-                <p class="hero-subtitle">Scan this QR code with your WhatsApp to link your device</p>
-            </div>
-            
-            <div class="card fade-in">
+                <p class="hero-subtitle">Scan this QR code with WhatsApp to link your device</p>
                 <div id="status-badge" class="status-badge status-disconnected fade-in">
                     <i class="fas fa-times-circle"></i>
                     <span id="status-text">Disconnected</span>
                 </div>
-                
-                <div id="qr-container">
-                    <div class="qr-container">
-                        <i class="fas fa-qrcode qr-placeholder"></i>
-                        <h3>QR Code Not Available</h3>
-                        <p>Please wait for the bot to generate a QR code or use the pairing method instead.</p>
+            </div>
+            
+            <div class="card fade-in" id="qr-container">
+                <div class="qr-container">
+                    <i class="fas fa-qrcode qr-placeholder"></i>
+                    <h3>Loading QR Code...</h3>
+                    <p>Please wait while the QR code is being generated.</p>
+                </div>
+            </div>
+            
+            <div class="card fade-in">
+                <h3 class="card-title">How to Scan</h3>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <strong>Open WhatsApp</strong>
+                            <p>Launch WhatsApp on your mobile device</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <strong>Go to Settings</strong>
+                            <p>Tap the settings icon in the bottom right (iOS) or top right (Android)</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <strong>Linked Devices</strong>
+                            <p>Tap on "Linked Devices" or "WhatsApp Web/Desktop"</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <strong>Scan QR Code</strong>
+                            <p>Tap "Link a Device" and scan the QR code above</p>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="action-buttons">
-                    <a href="/pair" class="btn btn-outline">
-                        <i class="fas fa-mobile-alt"></i>
-                        Use Pairing Code Instead
-                    </a>
+                <div id="warning-message" class="warning-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Bot not ready for QR scanning.</strong>
+                    <p>Please wait for the bot to be in "connecting" state before scanning.</p>
                 </div>
             </div>
         </div>
